@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-20 15:27:36",
+  "machine": "Windows 11, Python 3.13.1",
+  "setup": "FastAPI (1 uvicorn worker) + PostgreSQL 16 + Redis 7 in Docker Desktop; client on the same host",
+  "requests_per_scenario": 1500,
+  "results": [
+    {
+      "scenario": "baseline GET /health/live (no deps)",
+      "requests": 1500,
+      "wall_seconds": 6.332,
+      "throughput_rps": 236.9,
+      "latency_ms": {
+        "mean": 4.22,
+        "p50": 4.09,
+        "p95": 5.17,
+        "p99": 6.18,
+        "max": 7.92
+      },
+      "cache_header_counts": {
+        "n/a": 1
+      }
+    },
+    {
+      "scenario": "sequential, cache HIT",
+      "requests": 1500,
+      "wall_seconds": 14.915,
+      "throughput_rps": 100.6,
+      "latency_ms": {
+        "mean": 9.94,
+        "p50": 9.79,
+        "p95": 11.44,
+        "p99": 12.63,
+        "max": 15.56
+      },
+      "cache_header_counts": {
+        "HIT": 1500
+      }
+    },
+    {
+      "scenario": "sequential, forced cache MISS (DB)",
+      "requests": 1500,
+      "wall_seconds": 24.796,
+      "throughput_rps": 60.5,
+      "latency_ms": {
+        "mean": 14.87,
+        "p50": 14.71,
+        "p95": 16.75,
+        "p99": 18.5,
+        "max": 20.72
+      },
+      "cache_header_counts": {
+        "MISS": 1500
+      }
+    },
+    {
+      "scenario": "concurrent x8, cache HIT",
+      "requests": 1496,
+      "wall_seconds": 12.525,
+      "throughput_rps": 119.4,
+      "latency_ms": {
+        "mean": 66.71,
+        "p50": 65.85,
+        "p95": 78.45,
+        "p99": 92.28,
+        "max": 175.74
+      },
+      "cache_header_counts": {
+        "HIT": 1496
+      }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+# secrets / local config
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# node
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# private keys, certificates' keys, credential dumps (defence in depth; none exist today)
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+id_ed25519*
+*.secret
+*.secrets
+secrets/
+credentials*.json
+service-account*.json
+.npmrc
+.pypirc
+.netrc
+
+# local databases, dumps, network captures (can contain cookies / tokens)
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.har
+
+# assistant / local tool state
+.claude/

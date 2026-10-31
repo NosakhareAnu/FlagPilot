@@ -1,0 +1,90 @@
+name: flagpilot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flagpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run "python scripts/setup.py" first}
+      POSTGRES_DB: ${POSTGRES_DB:-flagpilot}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    # Cache only: no persistence needed; evict least-recently-used keys under memory pressure.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-flagpilot}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-flagpilot}
+      REDIS_URL: redis://redis:6379/0
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@flagpilot.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run "python scripts/setup.py" first}
+      BOOTSTRAP_API_KEY_DEVELOPMENT: ${BOOTSTRAP_API_KEY_DEVELOPMENT:-}
+      BOOTSTRAP_API_KEY_PRODUCTION: ${BOOTSTRAP_API_KEY_PRODUCTION:-}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-30}
+      NEGATIVE_CACHE_TTL_SECONDS: ${NEGATIVE_CACHE_TTL_SECONDS:-10}
+      EVAL_RATE_LIMIT: ${EVAL_RATE_LIMIT:-600}
+      ADMIN_RATE_LIMIT: ${ADMIN_RATE_LIMIT:-300}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10}
+      # X-Forwarded-For is ignored (hops=0): Next.js rewrites forward the client-supplied header unchanged, so it is
+      # spoofable. Dashboard logins therefore share one rate-limit bucket keyed by the proxy address.
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3).status == 200 else 1)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_INTERNAL_URL: http://backend:8000
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8000
+      DEMO_API_KEY_DEVELOPMENT: ${BOOTSTRAP_API_KEY_DEVELOPMENT:-}
+      DEMO_API_KEY_PRODUCTION: ${BOOTSTRAP_API_KEY_PRODUCTION:-}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  pgdata:
